@@ -1,0 +1,6 @@
+.venv/
+*.png
+.DS_Store
+__pycache__/
+
+!reference/*.png
