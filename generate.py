@@ -24,7 +24,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 import headerstyle
-import theme
+from themes import THEMES
 
 HERE = Path(__file__).resolve().parent
 TYPES_DIR = HERE / "types"                # one braille-art file per type: types/<name>.txt
@@ -52,7 +52,7 @@ def load_skull(path):
     return rows
 
 
-def draw_skull(img, theme_name, rows, W, top, max_pitch, band_h, s):
+def draw_skull(img, theme, rows, W, top, max_pitch, band_h, s):
     """Draw braille rows as dots, shrinking the pitch so the art fits band_h tall and 90% of W wide."""
     ncols = max(len(t) for _, t in rows)
     pitch = min(max_pitch, band_h // (len(rows) * 4), int(W * 0.9) // (ncols * 2))
@@ -68,8 +68,8 @@ def draw_skull(img, theme_name, rows, W, top, max_pitch, band_h, s):
     gx_min = min(x for x, _, _ in dots)
     gx_max = max(x for x, _, _ in dots) + 1
     x0 = (W - (gx_max - gx_min) * pitch) // 2 - gx_min * pitch
-    theme.draw_art(img, theme_name, [(x0 + gx * pitch + pitch / 2, top + gy * pitch + pitch / 2, col)
-                                     for gx, gy, col in dots], pitch, s)
+    theme.draw_art(img, [(x0 + gx * pitch + pitch / 2, top + gy * pitch + pitch / 2, col)
+                         for gx, gy, col in dots], pitch, s)
     cx = x0 + (gx_min + gx_max) * pitch / 2
     return cx, top + len(rows) * 4 * pitch
 
@@ -122,7 +122,7 @@ def main():
     ap.add_argument("-t", "--type", default=cfg["type"], choices=types, metavar="TYPE",
                     help="art from types/TYPE.txt; see --list-types")
     ap.add_argument("--list-types", action="store_true", help="list the available types and exit")
-    ap.add_argument("--theme", default=cfg["theme"], choices=theme.THEMES,
+    ap.add_argument("--theme", default=cfg["theme"], choices=list(THEMES),
                     help="canvas, art treatment and text colours; constellation draws the art as a starry outline")
     ap.add_argument("-o", "--out", default=cfg["out"], help="output PNG path")
     ap.add_argument("--size", default=cfg["size"], help="WIDTHxHEIGHT")
@@ -138,7 +138,8 @@ def main():
 
     W, H = (int(v) for v in args.size.lower().split("x"))
     s = SS * W / 3840                    # everything below is laid out in 3840-wide units
-    img = theme.base(args.theme, (W * SS, H * SS), s)
+    theme = THEMES[args.theme]
+    img = theme.base((W * SS, H * SS), s)
 
     art_top = 640
     if args.header.strip():
@@ -146,10 +147,10 @@ def main():
                          W * SS, top=int(170 * s), s=s, dejavu=DEJAVU)
     else:
         art_top = 400                    # no header: centre art + subtitle in the freed space
-    skull_cx, skull_bottom = draw_skull(img, args.theme, load_skull(TYPES_DIR / f"{args.type}.txt"), W * SS,
+    skull_cx, skull_bottom = draw_skull(img, theme, load_skull(TYPES_DIR / f"{args.type}.txt"), W * SS,
                                           top=int(art_top * s), max_pitch=int(22 * s), band_h=int(1232 * s), s=s)
     d = ImageDraw.Draw(img)
-    colours = theme.text_colours(args.theme)
+    colours = theme.TEXT
 
     mono = ImageFont.truetype(str(HERE / "fonts/JetBrainsMono-Regular.ttf"), int(46 * s))
     small = ImageFont.truetype(str(HERE / "fonts/JetBrainsMono-Regular.ttf"), int(30 * s))
