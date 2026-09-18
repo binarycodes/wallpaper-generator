@@ -5,12 +5,14 @@ subtitle and footer.
 
 ## Setup
 
+Install [uv](https://docs.astral.sh/uv/), then:
+
 ```sh
-./setup.sh
+uv sync
 ```
 
-This creates `.venv` and installs `requirements.txt`. No activation is needed:
-`generate.py` runs itself under `.venv` automatically.
+This creates `.venv`. No activation is needed: `generate.py` runs itself under
+`.venv` automatically, or use `uv run ./generate.py`.
 
 ## Usage
 
@@ -28,6 +30,7 @@ This creates `.venv` and installs `requirements.txt`. No activation is needed:
 | `-f`, `--footer` | `footer` | small text bottom-right; `""` to omit |
 | `-p`, `--prompt` | `prompt` | small text bottom-left; `""` to omit |
 | `-t`, `--type` | `type` | centre art, any `types/<name>.txt` |
+| `--theme` | `theme` | `plain`, `constellation` or `matrix`; sets canvas, dot treatment and text colours |
 | `-o`, `--out` | `out` | output PNG path |
 | `--size` | `size` | `WIDTHxHEIGHT` |
 | `-c`, `--config` | | TOML file to read instead of `config.toml` |
@@ -44,25 +47,21 @@ the file. The header auto-shrinks to fit the width.
 fonts made of full blocks are drawn as crisp rectangles, all others through
 DejaVu Sans Mono. `--header-render-style` is one of `outline` (gradient with the
 double-line strokes), `gradient`, `solid`, `hollow`, `dotted`, `hgradient`,
-`scanlines`, `shadow`, `dither`. Run `tools/header_sheets.py` to render
-comparison sheets of both into `reference/` (git-ignored).
+`scanlines`, `shadow`, `dither`. `reference/` has comparison sheets of both.
+
+## Themes
+
+- `plain` is the near-black terminal look
+- `constellation` is a navy night sky with a star field and a teal glow
+- `matrix` is green glyph rain on black; the art is built from glyphs and the header goes green
 
 ## Types
 
 The centre art comes from `types/<name>.txt`, selected with `--type`. Included:
-`arch` (default), `skull`, `debian`, `macos`, `kali`, `deathstar`. Art of any
+`arch` (default), `skull`, `debian`, `macos`, `kali`, `deathstar`, `vaadin`. Art of any
 size is scaled to fit between header and footer.
 
-Each line is `[#RRGGBB]<braille>[/]`, so those can be dropped in directly. To make one from an image:
-
-```sh
-tools/svg2png.py icon.svg icon.png                       # single-colour SVG -> mask
-tools/img2type.py icon.png types/icon.txt --cols 48      # flat logo, hard threshold
-tools/img2type.py photo.png types/photo.txt --cols 56 --dither   # shaded image
-```
-
-`--color`/`--color2` set a top-to-bottom fade; `--exact` uses one image pixel per
-dot. `tools/draw_sources.py DIR` redraws the `deathstar` source bitmap.
-
-Arch, Debian, Apple and Kali marks are trademarks of their owners; the type files are
+Arch, Debian, Apple, Kali and Vaadin marks are trademarks of their owners; the type files are
 derived from [simple-icons](https://simpleicons.org) for personal use.
+
+Making your own types or themes is covered in [CONTRIBUTING.md](CONTRIBUTING.md).
