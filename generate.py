@@ -74,6 +74,24 @@ def draw_skull(img, theme, rows, W, top, max_pitch, band_h, s):
     return cx, top + len(rows) * 4 * pitch
 
 
+def has_glyph(font, ch, _cache={}):
+    """True if the font draws ch as something other than its .notdef box."""
+    key = (font.path, font.size, ch)
+    if key not in _cache:
+        _cache[key] = bytes(font.getmask(ch)) != bytes(font.getmask("\ue000"))
+    return _cache[key]
+
+
+def draw_text(d, xy, text, font, fallback, fill):
+    """Draw text baseline-aligned, taking each glyph the font lacks from fallback."""
+    x, y = xy
+    y += font.getmetrics()[0]                 # top of ascender -> baseline, like the default anchor
+    for ch in text:
+        f = font if has_glyph(font, ch) else fallback
+        d.text((x, y), ch, font=f, fill=fill, anchor="ls")
+        x += f.getlength(ch)
+
+
 def finish(img, W, H):
     out = img.resize((W, H), Image.LANCZOS)
     a = np.asarray(out).astype(np.float32)
@@ -123,7 +141,7 @@ def main():
                     help="art from types/TYPE.txt; see --list-types")
     ap.add_argument("--list-types", action="store_true", help="list the available types and exit")
     ap.add_argument("--theme", default=cfg["theme"], choices=list(THEMES),
-                    help="canvas, art treatment and text colours; constellation draws the art as a starry outline")
+                    help="canvas, art treatment and text colours")
     ap.add_argument("-o", "--out", default=cfg["out"], help="output PNG path")
     ap.add_argument("--size", default=cfg["size"], help="WIDTHxHEIGHT")
     args = ap.parse_args()
@@ -152,14 +170,16 @@ def main():
     d = ImageDraw.Draw(img)
     colours = theme.TEXT
 
-    mono = ImageFont.truetype(str(HERE / "fonts/JetBrainsMono-Regular.ttf"), int(46 * s))
-    small = ImageFont.truetype(str(HERE / "fonts/JetBrainsMono-Regular.ttf"), int(30 * s))
-    symbols = ImageFont.truetype(str(HERE / "fonts/DejaVuSansMono.ttf"), int(30 * s))
+    text_font = getattr(theme, "TEXT_FONT", HERE / "fonts/JetBrainsMono-Regular.ttf")
+    ts = s * getattr(theme, "TEXT_SCALE", 1.0)
+    mono = ImageFont.truetype(str(text_font), int(46 * ts))
+    small = ImageFont.truetype(str(text_font), int(30 * ts))
+    symbols = ImageFont.truetype(str(HERE / "fonts/DejaVuSansMono.ttf"), int(30 * s))   # fallback for glyphs the text font lacks
     if args.subtitle:
         tw = d.textlength(args.subtitle, font=mono)
         d.text((skull_cx - tw / 2, skull_bottom + 70 * s), args.subtitle, font=mono, fill=colours["subtitle"])
     if args.prompt:
-        d.text((120 * s, H * SS - 120 * s), args.prompt, font=symbols, fill=colours["prompt"])
+        draw_text(d, (120 * s, H * SS - 120 * s), args.prompt, small, symbols, colours["prompt"])
     if args.footer:
         fw = d.textlength(args.footer, font=small)
         d.text((W * SS - 120 * s - fw, H * SS - 120 * s), args.footer, font=small, fill=colours["footer"])

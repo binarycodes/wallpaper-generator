@@ -22,7 +22,7 @@ re-executes itself under `.venv`, so nothing needs activating.
 | `themes/` | one module per theme, registered in `themes/__init__.py` |
 | `types/` | braille art files, one per `--type` |
 | `tools/` | scripts that make type files and comparison sheets |
-| `fonts/` | bundled JetBrains Mono and DejaVu Sans Mono |
+| `fonts/` | bundled monospace faces: JetBrains Mono, DejaVu Sans Mono, VT323, Share Tech Mono |
 | `reference/` | rendered comparison sheets (tracked PNGs) |
 
 Everything in `generate.py` is laid out in 3840-wide units and drawn at a 2x
@@ -37,6 +37,13 @@ A theme is a module in `themes/` exposing exactly three names:
 - `base(size, s)`: returns the RGB canvas of `size`
 - `draw_art(img, dots, pitch, s)`: draws the centre art onto `img`
 
+Optionally `TEXT_FONT`, a path to the font for subtitle and footer (default
+JetBrains Mono), and `TEXT_SCALE` to correct a face that draws small or large
+for its point size. All three text lines use it; any glyph the face lacks, such
+as the prompt's `❯` and `▉`, is drawn from DejaVu Sans Mono instead.
+Bundled fonts in `fonts/` are all SIL Open Font License; VT323 and Share Tech
+Mono come from Google Fonts.
+
 `dots` is a list of `(cx, cy, colour)` on the supersampled canvas, one entry per
 braille dot in the type file, and `pitch` is the distance between neighbouring
 dots. The type file is the only input; a theme may skip, resize or recolour dots
@@ -44,8 +51,10 @@ but must not depend on any other stored shape. Shared helpers live in
 `themes/_common.py`. Register the module in `THEMES` in `themes/__init__.py`;
 the CLI choices and their order come from that dict.
 
-Tunable constants sit at the top of each theme module with a one-line comment
-each; see `themes/constellation.py` for the pattern.
+Every visual parameter is a named constant at the top of the theme module with
+a one-line comment, grouped by concern, so the look can be tuned without reading
+the drawing code; `themes/matrix.py` is the fullest example. No magic numbers in
+the drawing functions.
 
 ## Types
 
