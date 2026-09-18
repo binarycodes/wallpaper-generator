@@ -24,14 +24,14 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 import headerstyle
+import theme
 
 HERE = Path(__file__).resolve().parent
 TYPES_DIR = HERE / "types"                # one braille-art file per type: types/<name>.txt
 CONFIG = HERE / "config.toml"             # the only source of defaults; every key is required
 CONFIG_KEYS = ("header", "header_font_style", "header_render_style", "subtitle", "footer",
-               "prompt", "type", "out", "size")
+               "prompt", "type", "theme", "out", "size")
 SS = 2                                  # supersample factor for smooth dots
-BG = (13, 16, 22)
 DEJAVU = HERE / "fonts" / "DejaVuSansMono.ttf"
 BRAILLE_BITS = [(0, 0, 0x01), (0, 1, 0x02), (0, 2, 0x04), (1, 0, 0x08),
                 (1, 1, 0x10), (1, 2, 0x20), (0, 3, 0x40), (1, 3, 0x80)]
@@ -52,7 +52,7 @@ def load_skull(path):
     return rows
 
 
-def draw_skull(d, rows, W, top, max_pitch, band_h):
+def draw_skull(img, theme_name, rows, W, top, max_pitch, band_h, s):
     """Draw braille rows as dots, shrinking the pitch so the art fits band_h tall and 90% of W wide."""
     ncols = max(len(t) for _, t in rows)
     pitch = min(max_pitch, band_h // (len(rows) * 4), int(W * 0.9) // (ncols * 2))
@@ -68,11 +68,8 @@ def draw_skull(d, rows, W, top, max_pitch, band_h):
     gx_min = min(x for x, _, _ in dots)
     gx_max = max(x for x, _, _ in dots) + 1
     x0 = (W - (gx_max - gx_min) * pitch) // 2 - gx_min * pitch
-    rad = pitch * 0.30
-    for gx, gy, col in dots:
-        cx = x0 + gx * pitch + pitch / 2
-        cy = top + gy * pitch + pitch / 2
-        d.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], fill=col)
+    theme.draw_art(img, theme_name, [(x0 + gx * pitch + pitch / 2, top + gy * pitch + pitch / 2, col)
+                                     for gx, gy, col in dots], pitch, s)
     cx = x0 + (gx_min + gx_max) * pitch / 2
     return cx, top + len(rows) * 4 * pitch
 
@@ -125,6 +122,8 @@ def main():
     ap.add_argument("-t", "--type", default=cfg["type"], choices=types, metavar="TYPE",
                     help="art from types/TYPE.txt; see --list-types")
     ap.add_argument("--list-types", action="store_true", help="list the available types and exit")
+    ap.add_argument("--theme", default=cfg["theme"], choices=theme.THEMES,
+                    help="canvas, art treatment and text colours; constellation draws the art as a starry outline")
     ap.add_argument("-o", "--out", default=cfg["out"], help="output PNG path")
     ap.add_argument("--size", default=cfg["size"], help="WIDTHxHEIGHT")
     args = ap.parse_args()
@@ -139,8 +138,7 @@ def main():
 
     W, H = (int(v) for v in args.size.lower().split("x"))
     s = SS * W / 3840                    # everything below is laid out in 3840-wide units
-    img = Image.new("RGB", (W * SS, H * SS), BG)
-    d = ImageDraw.Draw(img)
+    img = theme.base(args.theme, (W * SS, H * SS), s)
 
     art_top = 640
     if args.header.strip():
@@ -148,20 +146,22 @@ def main():
                          W * SS, top=int(170 * s), s=s, dejavu=DEJAVU)
     else:
         art_top = 400                    # no header: centre art + subtitle in the freed space
-    skull_cx, skull_bottom = draw_skull(d, load_skull(TYPES_DIR / f"{args.type}.txt"), W * SS,
-                                          top=int(art_top * s), max_pitch=int(22 * s), band_h=int(1232 * s))
+    skull_cx, skull_bottom = draw_skull(img, args.theme, load_skull(TYPES_DIR / f"{args.type}.txt"), W * SS,
+                                          top=int(art_top * s), max_pitch=int(22 * s), band_h=int(1232 * s), s=s)
+    d = ImageDraw.Draw(img)
+    colours = theme.text_colours(args.theme)
 
     mono = ImageFont.truetype(str(HERE / "fonts/JetBrainsMono-Regular.ttf"), int(46 * s))
     small = ImageFont.truetype(str(HERE / "fonts/JetBrainsMono-Regular.ttf"), int(30 * s))
     symbols = ImageFont.truetype(str(HERE / "fonts/DejaVuSansMono.ttf"), int(30 * s))
     if args.subtitle:
         tw = d.textlength(args.subtitle, font=mono)
-        d.text((skull_cx - tw / 2, skull_bottom + 70 * s), args.subtitle, font=mono, fill=(85, 85, 85))
+        d.text((skull_cx - tw / 2, skull_bottom + 70 * s), args.subtitle, font=mono, fill=colours["subtitle"])
     if args.prompt:
-        d.text((120 * s, H * SS - 120 * s), args.prompt, font=symbols, fill=(120, 120, 120))
+        d.text((120 * s, H * SS - 120 * s), args.prompt, font=symbols, fill=colours["prompt"])
     if args.footer:
         fw = d.textlength(args.footer, font=small)
-        d.text((W * SS - 120 * s - fw, H * SS - 120 * s), args.footer, font=small, fill=(70, 70, 70))
+        d.text((W * SS - 120 * s - fw, H * SS - 120 * s), args.footer, font=small, fill=colours["footer"])
 
     finish(img, W, H).save(args.out, optimize=True)
     print(f"saved {args.out} ({W}x{H})")

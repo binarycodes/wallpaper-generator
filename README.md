@@ -5,12 +5,15 @@ subtitle and footer.
 
 ## Setup
 
+Install [uv](https://docs.astral.sh/uv/), then:
+
 ```sh
-./setup.sh
+uv sync
 ```
 
-This creates `.venv` and installs `requirements.txt`. No activation is needed:
-`generate.py` runs itself under `.venv` automatically.
+This creates `.venv` from `uv.lock`. No activation is needed: `generate.py` and
+the tools run themselves under `.venv` automatically, or use `uv run ./generate.py`.
+Dependencies live in `pyproject.toml`; `uv lock --upgrade` refreshes the lockfile.
 
 ## Usage
 
@@ -28,6 +31,7 @@ This creates `.venv` and installs `requirements.txt`. No activation is needed:
 | `-f`, `--footer` | `footer` | small text bottom-right; `""` to omit |
 | `-p`, `--prompt` | `prompt` | small text bottom-left; `""` to omit |
 | `-t`, `--type` | `type` | centre art, any `types/<name>.txt` |
+| `--theme` | `theme` | `plain` or `constellation`; sets canvas, dot treatment and text colours |
 | `-o`, `--out` | `out` | output PNG path |
 | `--size` | `size` | `WIDTHxHEIGHT` |
 | `-c`, `--config` | | TOML file to read instead of `config.toml` |
@@ -47,10 +51,15 @@ double-line strokes), `gradient`, `solid`, `hollow`, `dotted`, `hgradient`,
 `scanlines`, `shadow`, `dither`. Run `tools/header_sheets.py` to render
 comparison sheets of both into `reference/` (git-ignored).
 
+## Themes
+
+- `plain` is the near-black terminal look
+- `constellation` is a navy night sky with a star field and a teal glow
+
 ## Types
 
 The centre art comes from `types/<name>.txt`, selected with `--type`. Included:
-`arch` (default), `skull`, `debian`, `macos`, `kali`, `deathstar`. Art of any
+`arch` (default), `skull`, `debian`, `macos`, `kali`, `deathstar`, `vaadin`. Art of any
 size is scaled to fit between header and footer.
 
 Each line is `[#RRGGBB]<braille>[/]`, so those can be dropped in directly. To make one from an image:
@@ -64,5 +73,5 @@ tools/img2type.py photo.png types/photo.txt --cols 56 --dither   # shaded image
 `--color`/`--color2` set a top-to-bottom fade; `--exact` uses one image pixel per
 dot. `tools/draw_sources.py DIR` redraws the `deathstar` source bitmap.
 
-Arch, Debian, Apple and Kali marks are trademarks of their owners; the type files are
+Arch, Debian, Apple, Kali and Vaadin marks are trademarks of their owners; the type files are
 derived from [simple-icons](https://simpleicons.org) for personal use.

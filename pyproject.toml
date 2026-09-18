@@ -1,0 +1,14 @@
+[project]
+name = "wallpaper-generator"
+version = "0.1.0"
+description = "Monochrome terminal-style wallpaper: block-letter header, braille art, subtitle and footer"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pillow",
+    "pyfiglet",
+    "svgelements",
+]
+
+[tool.uv]
+package = false

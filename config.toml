@@ -1,12 +1,13 @@
 # Defaults for generate.py. Command-line options override these.
 # Pass --config PATH to use a different file.
 
-header   = "A R C H L I N U X"          # block-letter title; "" to omit (art shifts up)
+header   = ""          # block-letter title; "" to omit (art shifts up)
 header_font_style   = "ansi_shadow"   # FIGlet font; ./generate.py --list-header-fonts
 header_render_style = "outline"       # outline gradient solid hollow dotted hgradient scanlines shadow dither
-subtitle = "0 days since the last update"      # small text under the art; "" to omit
-footer   = "Did you pacman -Syu today?"   # bottom-right; "" to omit
+subtitle = "Fight for simplicity"      # small text under the art; "" to omit
+footer   = "Remember to mvn vaadin:dance"   # bottom-right; "" to omit
 prompt   = "me@localhost ❯ ▉"                    # bottom-left; "" to omit
-type     = "arch"                  # any types/<name>.txt
+type     = "vaadin"                  # any types/<name>.txt
+theme    = "plain"                 # plain constellation
 out      = "wallpaper.png"
 size     = "3840x2160"
