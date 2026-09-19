@@ -19,7 +19,6 @@ TRAIL = np.array([0, 255, 70], np.float32)
 HEAD = np.array([190, 255, 200], np.float32)
 GLOW = np.array([0, 120, 40], np.float32)
 GRADE_INK = (64, 255, 89)       # the brightest header grey becomes this; darker greys sink towards BG
-SEED = 7                        # change for a different rain and glyph pattern
 
 RAIN_GLYPH = 24                 # glyph size in layout units
 RAIN_ROW = 1.05                 # vertical glyph pitch as a multiple of the glyph size
@@ -44,9 +43,9 @@ ART_DIM_BLUR = 3                # softness of that margin, in dot pitches
 GRADE_SAT = 40                  # pixels less saturated than this are graded to green
 
 
-def base(size, s):
+def base(size, s, seed):
     W, H = size
-    rng = np.random.default_rng(SEED)
+    rng = np.random.default_rng(seed)
     gs = int(RAIN_GLYPH * s)
     font = ImageFont.truetype(str(FONT), gs)
     cw, rh = gs, int(gs * RAIN_ROW)
@@ -83,8 +82,8 @@ def base(size, s):
 
 
 
-def draw_art(img, dots, pitch, s):
-    rng = np.random.default_rng(SEED)
+def draw_art(img, dots, pitch, s, seed):
+    rng = np.random.default_rng(seed)
     a = grade_greys(img, BG, GRADE_INK, GRADE_SAT)
 
     xs = [cx for cx, _, _ in dots]

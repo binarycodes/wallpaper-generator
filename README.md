@@ -31,6 +31,7 @@ This creates `.venv`. No activation is needed: `generate.py` runs itself under
 | `-p`, `--prompt` | `prompt` | small text bottom-left; `""` to omit |
 | `-t`, `--type` | `type` | centre art, any `types/<name>.txt` |
 | `--theme` | `theme` | `plain`, `constellation`, `matrix`, `blueprint` or `outbreak`; sets canvas, dot treatment and text colours |
+| `--seed` | `seed` | integer seed for everything a theme places at random; change it to reroll drips, stars or bullet holes |
 | `-o`, `--out` | `out` | output PNG path |
 | `--size` | `size` | `WIDTHxHEIGHT` |
 | `-c`, `--config` | | TOML file to read instead of `config.toml` |

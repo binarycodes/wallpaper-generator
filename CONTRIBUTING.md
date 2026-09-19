@@ -34,8 +34,11 @@ and every size in the themes and header code is multiplied by it.
 A theme is a module in `themes/` exposing exactly three names:
 
 - `TEXT`: dict with `subtitle`, `prompt` and `footer` RGB tuples
-- `base(size, s)`: returns the RGB canvas of `size`
-- `draw_art(img, dots, pitch, s)`: draws the centre art onto `img`
+- `base(size, s, seed)`: returns the RGB canvas of `size`
+- `draw_art(img, dots, pitch, s, seed)`: draws the centre art onto `img`
+
+`seed` is the user's `--seed`; every random choice in a theme comes from
+`np.random.default_rng(seed)` so the same options always give the same image.
 
 Optionally `TEXT_FONT`, a path to the font for subtitle and footer (default
 JetBrains Mono), and `TEXT_SCALE` to correct a face that draws small or large

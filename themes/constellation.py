@@ -19,10 +19,10 @@ DOT_SIZE_JITTER = 0.40          # 0 uniform dots, 0.5 gentle size mix, 1 large v
 DOT_STRIDE = 2                  # keep every Nth dot in both directions: 1 all dots, 2 gaps double
 
 
-def base(size, s):
+def base(size, s, seed):
     """Canvas of the given size; s is the layout scale generate.py uses."""
     W, H = size
-    rng = np.random.default_rng(3)
+    rng = np.random.default_rng(seed)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     r = np.sqrt(((xx - W * 0.45) / W) ** 2 + ((yy - H * 0.45) / H) ** 2)
     t = np.clip(r / 0.7, 0, 1)[..., None]
@@ -44,12 +44,12 @@ def base(size, s):
     return Image.fromarray(np.clip(sky, 0, 255).astype(np.uint8))
 
 
-def draw_art(img, dots, pitch, s):
+def draw_art(img, dots, pitch, s, seed):
     """Braille dots become stars: points of varying brightness with a soft halo,
     over a faint glow of the whole shape. A stride thins the lattice evenly and
     a random share of the rest is left dark so the cluster breathes; the type
     file's colour sets each dot's brightness so its fades carry over."""
-    rng = np.random.default_rng(3)
+    rng = np.random.default_rng(seed)
     points = Image.new("L", img.size, 0)
     d = ImageDraw.Draw(points)
     x_min = min(cx for cx, _, _ in dots)

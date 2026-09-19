@@ -15,7 +15,6 @@ TEXT = {"subtitle": (200, 220, 245), "prompt": (225, 238, 255), "footer": (150, 
 INK = np.array((222, 236, 255), np.float32)       # everything drawn on the paper is this, at some alpha
 PAPER = np.array((18, 60, 122), np.float32)
 PAPER_EDGE = np.array((10, 38, 84), np.float32)
-SEED = 11                       # change for a different mottle
 
 MOTTLE = 0.14                   # strength of the cyanotype blotching; 0 is flat paper
 MOTTLE_CELLS = 48               # blotch size: cells across the width, fewer is coarser
@@ -58,9 +57,9 @@ def _alpha_layer(size):
     return layer, ImageDraw.Draw(layer)
 
 
-def base(size, s):
+def base(size, s, seed):
     W, H = size
-    rng = np.random.default_rng(SEED)
+    rng = np.random.default_rng(seed)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     r = np.sqrt(((xx - W / 2) / W) ** 2 + ((yy - H / 2) / H) ** 2)
     t = np.clip(r / 0.6, 0, 1)[..., None]
@@ -114,7 +113,7 @@ def _dimension(d, font, a0, a1, off, label, pitch, s, vertical):
         d.text((mid, y), label, font=font, fill=255, anchor="mm")
 
 
-def draw_art(img, dots, pitch, s):
+def draw_art(img, dots, pitch, s, seed):
     """Dots on the shape's boundary are drawn as full ink, interior dots as faint
     points, and the closed shape is section-hatched. Boundary means a dot with a
     missing four-neighbour in the braille lattice, so the type file is the only input."""

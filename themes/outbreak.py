@@ -27,7 +27,6 @@ SHADOW_OFFSET = 4                                 # shadow offset down and right
 SHADOW_BLUR = 5                                   # shadow softness in layout units
 BLOOD_OPACITY = 0.96
 THICK_BLUR = 0.5                                  # blur radius that turns coverage into thickness, in dot pitches
-SEED = 13                                         # change for a different splatter and drip pattern
 
 GRIME = 0.22                                      # strength of the concrete mottle; 0 is flat paint
 GRIME_CELLS = (24, 96, 384)                       # noise octaves as cells across the width, coarse to fine
@@ -193,9 +192,9 @@ def _stencil(size, rng):
     return unit(m) * spray
 
 
-def base(size, s):
+def base(size, s, seed):
     W, H = size
-    rng = np.random.default_rng(SEED)
+    rng = np.random.default_rng(seed)
     a = np.full((H, W, 3), BG, np.float32)
 
     grime = sum(w * _noise(rng, size, c) for c, w in zip(GRIME_CELLS, GRIME_WEIGHTS))
@@ -299,8 +298,8 @@ def _header_anchors(img, s, rng):
     return picked
 
 
-def draw_art(img, dots, pitch, s):
-    rng = np.random.default_rng(SEED + 1)
+def draw_art(img, dots, pitch, s, seed):
+    rng = np.random.default_rng(seed + 1)          # not the wall's stream, so art and wall detail do not correlate
     anchors = _header_anchors(img, s, rng)
     a = grade_greys(img, BG, HEADER_INK, GRADE_SAT)
 
