@@ -2,8 +2,10 @@
 biohazard stencil, and blood everywhere. Drips run down from the top of the wall,
 splatter clusters hit it at random, and the art itself is blood: every braille
 dot is a droplet, neighbours pool together, dots on the shape's underside drip,
-and a fine spray surrounds it. The header is graded to blood red and its lettering
-bleeds from its lower edges. The type file's colour fade is ignored; blood is blood."""
+and a fine spray surrounds it, all fading from fresh red at the top to near-black at
+the bottom. The header is graded to blood red and its lettering bleeds from its lower
+edges. Bullet holes punch through wall, header and art alike. The type file's colour
+fade is ignored; blood is blood."""
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -68,6 +70,23 @@ ART_DRIP_WIDTH = (0.25, 0.45)                     # width range in dot pitches
 ART_SPRAY = 0.5                                   # spray droplets per art dot
 ART_SPRAY_SPREAD = 2.5                            # spray distance (one sigma) in dot pitches
 ART_SPRAY_R = 0.12                                # mean spray droplet radius in dot pitches
+ART_FADE = (1.0, -0.55)                           # blood freshness at the top and bottom of the art: 1 is BLOOD, 0 is BLOOD_DARK, negative sinks towards black
+
+WALL_HOLES = 5                                    # bullet holes in the wall and header
+ART_HOLES = 3                                     # bullet holes through the art
+HOLE_R = (15, 26)                                 # hole radius range in layout units
+HOLE_JAG = 0.18                                   # raggedness of the hole edge; 0 is a perfect circle
+HOLE_CORE = 0.55                                  # pitch-black core radius, relative to the hole
+HOLE_CRATER = np.array([12, 7, 7], np.float32)
+HOLE_RIM = np.array([158, 138, 124], np.float32)  # chipped concrete; kept warm so the header grade leaves it alone
+HOLE_RIM_W = 0.45                                 # rim width, relative to the hole radius
+HOLE_RIM_ALPHA = 0.8
+HOLE_RIM_GRAIN = 0.5                              # unevenness of the chipped rim; 0 is flat
+HOLE_CRACKS = (3, 6)                              # radial cracks per hole, min and max
+HOLE_CRACK_LEN = (1.2, 3.5)                       # crack length range, relative to the hole radius
+HOLE_SCORCH = 0.45                                # darkening of the dust halo around each hole
+HOLE_SCORCH_R = 2.2                               # halo radius, relative to the hole
+HOLE_ZONE = 0.72                                  # wall holes stay above this share of the height, clear of the text
 
 HEADER_INK = (214, 26, 32)                        # the brightest header grey becomes this; darker greys sink towards BG
 GRADE_SAT = 24
@@ -121,21 +140,28 @@ def _splatter(d, cx, cy, spread, rng, s):
                    x0 + np.cos(ang) * ln + r, y0 + np.sin(ang) * ln + r], fill=255)
 
 
-def _paint_blood(a, cover, thick_blur, s):
+def _paint_blood(a, cover, thick_blur, s, fresh=None):
     """Composite a coverage mask as blood: a soft shadow beneath, thin regions dry
     dark, thick ones stay fresh red, and the top edge of every blob catches a wet
-    highlight."""
+    highlight. fresh, if given, scales freshness per pixel: 1 is BLOOD, 0 is
+    BLOOD_DARK and negative values sink towards black."""
     c = unit(cover)
     off = int(round(SHADOW_OFFSET * s))
     shadow = np.roll(unit(cover.filter(ImageFilter.GaussianBlur(SHADOW_BLUR * s))), (off, off), axis=(0, 1))
     a *= 1 - (shadow * SHADOW_ALPHA * (1 - c))[..., None]
     thick = np.clip(unit(cover.filter(ImageFilter.GaussianBlur(thick_blur))) * 1.3, 0, 1)[..., None]
+    if fresh is not None:
+        thick = thick * np.clip(fresh, 0, 1)[..., None]
     colour = BLOOD_DARK + (BLOOD - BLOOD_DARK) * thick
+    if fresh is not None:
+        colour *= 1 + np.clip(fresh, -1, 0)[..., None]
     alpha = (c * BLOOD_OPACITY)[..., None]
     a *= 1 - alpha
     a += colour * alpha
     shift = max(1, int(round(GLOSS_SHIFT * s)))
     gloss = np.clip(c - np.roll(c, shift, axis=0), 0, 1) * c
+    if fresh is not None:
+        gloss = gloss * np.clip(fresh, 0, 1)
     a += gloss[..., None] * GLOSS * GLOSS_ALPHA
     return a
 
@@ -207,6 +233,46 @@ def base(size, s):
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
 
 
+def _ragged(d, x, y, r, rng, fill, points=28):
+    """Filled polygon approximating a circle with a jittered radius."""
+    ang = np.linspace(0, 2 * np.pi, points, endpoint=False)
+    rad = r * (1 + HOLE_JAG * rng.normal(0, 1, points))
+    d.polygon(list(zip(x + np.cos(ang) * rad, y + np.sin(ang) * rad)), fill=fill)
+
+
+def _bullet_hole(layers, x, y, r, rng, s):
+    """One hole into the crater, core, rim and crack layers."""
+    crater, core, rim, cracks = layers
+    _ragged(rim, x, y, r * (1 + HOLE_RIM_W), rng, 255)
+    _ragged(crater, x, y, r, rng, 255)
+    _ragged(core, x, y, r * HOLE_CORE, rng, 255, points=16)
+    for _ in range(rng.integers(HOLE_CRACKS[0], HOLE_CRACKS[1] + 1)):
+        ang = rng.uniform(0, 2 * np.pi)
+        ln = r * rng.uniform(*HOLE_CRACK_LEN)
+        pts = [(x + np.cos(ang) * r * 0.8, y + np.sin(ang) * r * 0.8)]
+        for k in np.linspace(0.2, 1, 4):
+            ang += rng.normal(0, 0.35)
+            pts.append((pts[-1][0] + np.cos(ang) * ln * 0.25, pts[-1][1] + np.sin(ang) * ln * 0.25))
+        cracks.line(pts, fill=255, width=max(1, int(1.6 * s)))
+
+
+def _shoot(a, holes, size, s, rng):
+    """Punch bullet holes through whatever is already on the canvas."""
+    imgs = [Image.new("L", size, 0) for _ in range(4)]
+    layers = [ImageDraw.Draw(im) for im in imgs]
+    for x, y, r in holes:
+        _bullet_hole(layers, x, y, r, rng, s)
+    crater, core, rim, cracks = (unit(im) for im in imgs)
+    rmax = max(r for _, _, r in holes)
+    scorch = unit(imgs[0].filter(ImageFilter.GaussianBlur(rmax * (HOLE_SCORCH_R - 1) * 0.5)))
+    a *= 1 - (scorch * HOLE_SCORCH)[..., None]
+    a *= 1 - (cracks * 0.8)[..., None]
+    rim = rim * (1 - crater) * HOLE_RIM_ALPHA * (1 - HOLE_RIM_GRAIN * _noise(rng, size, 400, blur=0.6))
+    a = a * (1 - rim[..., None]) + HOLE_RIM * rim[..., None]
+    a = a * (1 - crater[..., None]) + HOLE_CRATER * crater[..., None]
+    a *= 1 - core[..., None]
+    return a
+
 def _header_anchors(img, s, rng):
     """Points along the underside of the header lettering, spaced apart, found
     from the grey pixels already on the canvas; thin strokes are skipped."""
@@ -258,5 +324,16 @@ def draw_art(img, dots, pitch, s):
         x, y = rng.normal(cx, ART_SPRAY_SPREAD * pitch), rng.normal(cy, ART_SPRAY_SPREAD * pitch)
         sr = rng.exponential(ART_SPRAY_R * pitch) + 0.5
         d.ellipse([x - sr, y - sr, x + sr, y + sr], fill=255)
-    a = _paint_blood(a, blood, pitch * THICK_BLUR, s)
+    y_max = max(cy for _, cy, _ in dots)
+    ty = np.clip((np.arange(img.size[1], dtype=np.float32) - y_min) / max(1, y_max - y_min), 0, 1)
+    fresh = ART_FADE[0] + (ART_FADE[1] - ART_FADE[0]) * ty
+    a = _paint_blood(a, blood, pitch * THICK_BLUR, s, fresh=np.broadcast_to(fresh[:, None], a.shape[:2]))
+
+    W, H = img.size
+    holes = [(rng.uniform(0.03, 0.97) * W, rng.uniform(0.03, HOLE_ZONE) * H, rng.uniform(*HOLE_R) * s)
+             for _ in range(WALL_HOLES)]
+    for _ in range(ART_HOLES):
+        cx, cy, _ = dots[rng.integers(len(dots))]
+        holes.append((cx, cy, rng.uniform(*HOLE_R) * s))
+    a = _shoot(a, holes, img.size, s, rng)
     img.paste(Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)))

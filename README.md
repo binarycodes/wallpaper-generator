@@ -55,7 +55,7 @@ double-line strokes), `gradient`, `solid`, `hollow`, `dotted`, `hgradient`,
 - `constellation` is a navy night sky with a star field and a teal glow
 - `matrix` is green glyph rain on black; the art is built from glyphs and the header goes green
 - `blueprint` is a cyanotype drafting sheet: gridded blue paper, the art outlined in white ink over section hatching, with dimension lines giving its size in dots
-- `outbreak` is a containment breach: grimy concrete under a red emergency lamp, a spray-painted biohazard stencil, blood dripping from the top of the wall and from the header lettering, and the art itself rendered as pooled, dripping blood
+- `outbreak` is a containment breach: grimy concrete under a red emergency lamp, a spray-painted biohazard stencil, blood dripping from the top of the wall and from the header lettering, the art itself rendered as pooled, dripping blood that fades from fresh red to black, and bullet holes punched through wall, header and art
 
 ## Types
 
