@@ -2,7 +2,7 @@
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from ._common import luminance, unit
+from ._common import grade_greys, luminance, unit
 
 TEXT = {"subtitle": (120, 140, 175), "prompt": (140, 160, 195), "footer": (90, 110, 145)}
 SKY_CENTRE = np.array([22, 32, 62], np.float32)
@@ -12,6 +12,8 @@ STAR_TINT = np.array([200, 215, 235], np.float32)
 ART_GLOW = np.array([20, 80, 140], np.float32)
 SPARK_TINT = np.array([235, 245, 255], np.float32)
 SPARK_HALO = np.array([120, 160, 200], np.float32)
+HEADER_INK = (190, 210, 245)    # the brightest header grey becomes this pale starlight; darker greys sink towards SKY_CENTRE
+GRADE_SAT = 24                  # pixels less saturated than this are graded onto the sky palette
 DOT_DROP = 0.00                 # share of braille dots left dark
 DOT_SIZE_JITTER = 0.40          # 0 uniform dots, 0.5 gentle size mix, 1 large variance
 DOT_STRIDE = 2                  # keep every Nth dot in both directions: 1 all dots, 2 gaps double
@@ -62,7 +64,7 @@ def draw_art(img, dots, pitch, s):
     halo = points.filter(ImageFilter.GaussianBlur(pitch * 0.35))
     glow = points.filter(ImageFilter.GaussianBlur(pitch * 2.5))
 
-    a = np.asarray(img).astype(np.float32)
+    a = grade_greys(img, SKY_CENTRE, HEADER_INK, GRADE_SAT)
     a += unit(glow)[..., None] * ART_GLOW
     a += unit(halo)[..., None] * SPARK_HALO
     a += unit(points)[..., None] * SPARK_TINT
