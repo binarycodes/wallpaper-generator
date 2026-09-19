@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from ._common import luminance, unit
+from ._common import grade_greys, luminance, unit
 
 FONT = Path(__file__).resolve().parent.parent / "fonts" / "DejaVuSansMono.ttf"
 TEXT_FONT = FONT.with_name("VT323-Regular.ttf")   # boxy CRT face for subtitle and footer
@@ -18,7 +18,7 @@ BG = (0, 6, 2)
 TRAIL = np.array([0, 255, 70], np.float32)
 HEAD = np.array([190, 255, 200], np.float32)
 GLOW = np.array([0, 120, 40], np.float32)
-GRADE = np.array([0.25, 1.0, 0.35], np.float32)   # grey -> green ramp for the header
+GRADE_INK = (64, 255, 89)       # the brightest header grey becomes this; darker greys sink towards BG
 SEED = 7                        # change for a different rain and glyph pattern
 
 RAIN_GLYPH = 24                 # glyph size in layout units
@@ -82,17 +82,10 @@ def base(size, s):
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
 
 
-def _grade_greys(a):
-    """Map low-saturation pixels (the header) onto the green ramp; leave the rain alone."""
-    sat = a.max(axis=-1) - a.min(axis=-1)
-    w = np.clip(1 - sat / GRADE_SAT, 0, 1)[..., None]
-    lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
-    return a * (1 - w) + lum[..., None] * GRADE * w
-
 
 def draw_art(img, dots, pitch, s):
     rng = np.random.default_rng(SEED)
-    a = _grade_greys(np.asarray(img).astype(np.float32))
+    a = grade_greys(img, BG, GRADE_INK, GRADE_SAT)
 
     xs = [cx for cx, _, _ in dots]
     ys = [cy for _, cy, _ in dots]

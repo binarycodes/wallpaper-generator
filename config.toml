@@ -8,6 +8,6 @@ subtitle = "Fight for simplicity"      # small text under the art; "" to omit
 footer   = "Remember to mvn vaadin:dance"   # bottom-right; "" to omit
 prompt   = "me@localhost ❯ ▉"                    # bottom-left; "" to omit
 type     = "vaadin"                  # any types/<name>.txt
-theme    = "plain"                 # plain constellation
+theme    = "plain"                 # plain constellation matrix blueprint
 out      = "wallpaper.png"
 size     = "3840x2160"
