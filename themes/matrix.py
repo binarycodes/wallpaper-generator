@@ -2,12 +2,13 @@
 faint CRT scanlines. The art is rebuilt from glyphs with the rain dimmed behind
 it, and grey pixels already on the canvas (the header) are graded to green so
 nothing on the page is off-palette."""
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from ._common import luminance, unit
+from ._common import grade_greys, luminance, size_jitter, thin, unit
 
 FONT = Path(__file__).resolve().parent.parent / "fonts" / "DejaVuSansMono.ttf"
 TEXT_FONT = FONT.with_name("VT323-Regular.ttf")   # boxy CRT face for subtitle and footer
@@ -18,8 +19,7 @@ BG = (0, 6, 2)
 TRAIL = np.array([0, 255, 70], np.float32)
 HEAD = np.array([190, 255, 200], np.float32)
 GLOW = np.array([0, 120, 40], np.float32)
-GRADE = np.array([0.25, 1.0, 0.35], np.float32)   # grey -> green ramp for the header
-SEED = 7                        # change for a different rain and glyph pattern
+GRADE_INK = (64, 255, 89)       # the brightest header grey becomes this; darker greys sink towards BG
 
 RAIN_GLYPH = 24                 # glyph size in layout units
 RAIN_ROW = 1.05                 # vertical glyph pitch as a multiple of the glyph size
@@ -34,6 +34,9 @@ SCANLINES = 0.12                # darkening of every other scanline; 0 disables
 SCANLINE_PX = 3                 # scanline period in output pixels
 
 ART_GLYPH = 1.35                # art glyph size as a multiple of the dot pitch
+DOT_DROP = 0.00                 # share of art glyphs left out
+DOT_SIZE_JITTER = 0.40          # 0 uniform glyphs, 0.5 gentle size mix, 1 large variance
+DOT_STRIDE = 2                  # keep every Nth dot in both directions: 1 all dots, 2 gaps double
 ART_HEADS = 0.04                # share of art glyphs drawn in the bright head colour
 ART_BRIGHT = (0.55, 1.0)        # brightness range of the other art glyphs before the type colour
 ART_GLOW_BLUR = 0.9             # art glow radius as a multiple of the dot pitch
@@ -44,9 +47,14 @@ ART_DIM_BLUR = 3                # softness of that margin, in dot pitches
 GRADE_SAT = 40                  # pixels less saturated than this are graded to green
 
 
-def base(size, s):
+@lru_cache(maxsize=None)
+def _font(size):
+    return ImageFont.truetype(str(FONT), max(1, int(size)))
+
+
+def base(size, s, seed):
     W, H = size
-    rng = np.random.default_rng(SEED)
+    rng = np.random.default_rng(seed)
     gs = int(RAIN_GLYPH * s)
     font = ImageFont.truetype(str(FONT), gs)
     cw, rh = gs, int(gs * RAIN_ROW)
@@ -82,17 +90,10 @@ def base(size, s):
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
 
 
-def _grade_greys(a):
-    """Map low-saturation pixels (the header) onto the green ramp; leave the rain alone."""
-    sat = a.max(axis=-1) - a.min(axis=-1)
-    w = np.clip(1 - sat / GRADE_SAT, 0, 1)[..., None]
-    lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
-    return a * (1 - w) + lum[..., None] * GRADE * w
 
-
-def draw_art(img, dots, pitch, s):
-    rng = np.random.default_rng(SEED)
-    a = _grade_greys(np.asarray(img).astype(np.float32))
+def draw_art(img, dots, pitch, s, seed):
+    rng = np.random.default_rng(seed)
+    a = grade_greys(img, BG, GRADE_INK, GRADE_SAT)
 
     xs = [cx for cx, _, _ in dots]
     ys = [cy for _, cy, _ in dots]
@@ -103,12 +104,12 @@ def draw_art(img, dots, pitch, s):
     shade = shade.filter(ImageFilter.GaussianBlur(pitch * ART_DIM_BLUR))
     a *= 1 - ART_DIM * unit(shade)[..., None]
 
-    font = ImageFont.truetype(str(FONT), int(pitch * ART_GLYPH))
     body = Image.new("L", img.size, 0)
     head = Image.new("L", img.size, 0)
     db, dh = ImageDraw.Draw(body), ImageDraw.Draw(head)
-    for cx, cy, col in dots:
+    for cx, cy, col in thin(dots, pitch, rng, DOT_DROP, DOT_STRIDE):
         ch = GLYPHS[rng.integers(len(GLYPHS))]
+        font = _font(pitch * ART_GLYPH * size_jitter(rng, DOT_SIZE_JITTER))
         if rng.random() < ART_HEADS:
             dh.text((cx, cy), ch, font=font, fill=255, anchor="mm")
         else:

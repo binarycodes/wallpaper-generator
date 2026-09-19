@@ -34,8 +34,11 @@ and every size in the themes and header code is multiplied by it.
 A theme is a module in `themes/` exposing exactly three names:
 
 - `TEXT`: dict with `subtitle`, `prompt` and `footer` RGB tuples
-- `base(size, s)`: returns the RGB canvas of `size`
-- `draw_art(img, dots, pitch, s)`: draws the centre art onto `img`
+- `base(size, s, seed)`: returns the RGB canvas of `size`
+- `draw_art(img, dots, pitch, s, seed)`: draws the centre art onto `img`
+
+`seed` is the user's `--seed`; every random choice in a theme comes from
+`np.random.default_rng(seed)` so the same options always give the same image.
 
 Optionally `TEXT_FONT`, a path to the font for subtitle and footer (default
 JetBrains Mono), and `TEXT_SCALE` to correct a face that draws small or large
@@ -48,7 +51,9 @@ Mono come from Google Fonts.
 braille dot in the type file, and `pitch` is the distance between neighbouring
 dots. The type file is the only input; a theme may skip, resize or recolour dots
 but must not depend on any other stored shape. Shared helpers live in
-`themes/_common.py`. Register the module in `THEMES` in `themes/__init__.py`;
+`themes/_common.py`, including `thin` and `size_jitter` behind the `DOT_DROP`,
+`DOT_SIZE_JITTER` and `DOT_STRIDE` constants that constellation, matrix and
+outbreak expose. Register the module in `THEMES` in `themes/__init__.py`;
 the CLI choices and their order come from that dict.
 
 Every visual parameter is a named constant at the top of the theme module with

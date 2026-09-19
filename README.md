@@ -30,7 +30,8 @@ This creates `.venv`. No activation is needed: `generate.py` runs itself under
 | `-f`, `--footer` | `footer` | small text bottom-right; `""` to omit |
 | `-p`, `--prompt` | `prompt` | small text bottom-left; `""` to omit |
 | `-t`, `--type` | `type` | centre art, any `types/<name>.txt` |
-| `--theme` | `theme` | `plain`, `constellation` or `matrix`; sets canvas, dot treatment and text colours |
+| `--theme` | `theme` | `plain`, `constellation`, `matrix`, `blueprint` or `outbreak`; sets canvas, dot treatment and text colours |
+| `--seed` | `seed` | integer seed for everything a theme places at random; change it to reroll drips, stars or bullet holes |
 | `-o`, `--out` | `out` | output PNG path |
 | `--size` | `size` | `WIDTHxHEIGHT` |
 | `-c`, `--config` | | TOML file to read instead of `config.toml` |
@@ -54,6 +55,8 @@ double-line strokes), `gradient`, `solid`, `hollow`, `dotted`, `hgradient`,
 - `plain` is the near-black terminal look
 - `constellation` is a navy night sky with a star field and a teal glow
 - `matrix` is green glyph rain on black; the art is built from glyphs and the header goes green
+- `blueprint` is a cyanotype drafting sheet: gridded blue paper, the art outlined in white ink over section hatching, with dimension lines giving its size in dots
+- `outbreak` is a containment breach: grimy concrete under a red emergency lamp, a spray-painted biohazard stencil, blood dripping from the top of the wall and from the header lettering, the art itself rendered as pooled, dripping blood that fades from fresh red to black, and bullet holes punched through wall, header and art
 
 ## Types
 
