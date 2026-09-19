@@ -89,6 +89,13 @@ HOLE_CRACK_LEN = (1.2, 3.5)                       # crack length range, relative
 HOLE_SCORCH = 0.45                                # darkening of the dust halo around each hole
 HOLE_SCORCH_R = 2.2                               # halo radius, relative to the hole
 HOLE_ZONE = 0.72                                  # wall holes stay above this share of the height, clear of the text
+HOLE_BLEED = 0.75                                 # share of holes that bleed; 0 leaves them dry
+HOLE_BLEED_DROPS = 40                             # fresh spatter droplets around a bleeding hole
+HOLE_BLEED_SPREAD = 1.6                           # spatter radius (one sigma), relative to the hole radius
+HOLE_BLEED_DROP_R = 0.16                          # mean spatter droplet radius, relative to the hole
+HOLE_BLEED_DRIPS = (1, 2)                         # drips running out of a bleeding hole, min and max
+HOLE_BLEED_LEN = (6.0, 0.6)                       # median drip length relative to the hole radius, and lognormal spread
+HOLE_BLEED_WIDTH = (0.25, 0.45)                   # drip width range relative to the hole radius
 
 HEADER_INK = (214, 26, 32)                        # the brightest header grey becomes this; darker greys sink towards BG
 GRADE_SAT = 24
@@ -259,7 +266,9 @@ def _bullet_hole(layers, x, y, r, rng, s):
 
 
 def _shoot(a, holes, size, s, rng):
-    """Punch bullet holes through whatever is already on the canvas."""
+    """Punch bullet holes through whatever is already on the canvas, then let
+    most of them bleed: fresh spatter around the rim and drips out of the bottom,
+    with the core kept black so the hole still reads as a hole."""
     imgs = [Image.new("L", size, 0) for _ in range(4)]
     layers = [ImageDraw.Draw(im) for im in imgs]
     for x, y, r in holes:
@@ -272,6 +281,20 @@ def _shoot(a, holes, size, s, rng):
     rim = rim * (1 - crater) * HOLE_RIM_ALPHA * (1 - HOLE_RIM_GRAIN * _noise(rng, size, 400, blur=0.6))
     a = a * (1 - rim[..., None]) + HOLE_RIM * rim[..., None]
     a = a * (1 - crater[..., None]) + HOLE_CRATER * crater[..., None]
+    a *= 1 - core[..., None]
+
+    bleed, d = _layer(size)
+    for x, y, r in holes:
+        if rng.random() >= HOLE_BLEED:
+            continue
+        for _ in range(HOLE_BLEED_DROPS):
+            dr = rng.exponential(HOLE_BLEED_DROP_R * r) + 0.5
+            dx, dy = rng.normal(x, HOLE_BLEED_SPREAD * r), rng.normal(y, HOLE_BLEED_SPREAD * r)
+            d.ellipse([dx - dr, dy - dr, dx + dr, dy + dr], fill=255)
+        for _ in range(rng.integers(HOLE_BLEED_DRIPS[0], HOLE_BLEED_DRIPS[1] + 1)):
+            _drip(d, x + rng.normal(0, r * 0.3), y + r * 0.7,
+                  r * HOLE_BLEED_LEN[0] * rng.lognormal(0, HOLE_BLEED_LEN[1]), r * rng.uniform(*HOLE_BLEED_WIDTH), rng)
+    a = _paint_blood(a, bleed, rmax * 0.3, s)
     a *= 1 - core[..., None]
     return a
 
