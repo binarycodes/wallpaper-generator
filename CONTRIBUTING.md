@@ -51,7 +51,9 @@ Mono come from Google Fonts.
 braille dot in the type file, and `pitch` is the distance between neighbouring
 dots. The type file is the only input; a theme may skip, resize or recolour dots
 but must not depend on any other stored shape. Shared helpers live in
-`themes/_common.py`. Register the module in `THEMES` in `themes/__init__.py`;
+`themes/_common.py`, including `thin` and `size_jitter` behind the `DOT_DROP`,
+`DOT_SIZE_JITTER` and `DOT_STRIDE` constants that constellation, matrix and
+outbreak expose. Register the module in `THEMES` in `themes/__init__.py`;
 the CLI choices and their order come from that dict.
 
 Every visual parameter is a named constant at the top of the theme module with

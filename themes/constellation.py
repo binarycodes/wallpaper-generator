@@ -2,7 +2,7 @@
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from ._common import grade_greys, luminance, unit
+from ._common import grade_greys, luminance, size_jitter, thin, unit
 
 TEXT = {"subtitle": (120, 140, 175), "prompt": (140, 160, 195), "footer": (90, 110, 145)}
 SKY_CENTRE = np.array([22, 32, 62], np.float32)
@@ -52,13 +52,8 @@ def draw_art(img, dots, pitch, s, seed):
     rng = np.random.default_rng(seed)
     points = Image.new("L", img.size, 0)
     d = ImageDraw.Draw(points)
-    x_min = min(cx for cx, _, _ in dots)
-    y_min = min(cy for _, cy, _ in dots)
-    for cx, cy, col in dots:
-        gx, gy = round((cx - x_min) / pitch), round((cy - y_min) / pitch)
-        if gx % DOT_STRIDE or gy % DOT_STRIDE or rng.random() < DOT_DROP:
-            continue
-        r = pitch * 0.20 * rng.lognormal(0, 0.45 * DOT_SIZE_JITTER)   # median stays the medium size
+    for cx, cy, col in thin(dots, pitch, rng, DOT_DROP, DOT_STRIDE):
+        r = pitch * 0.20 * size_jitter(rng, DOT_SIZE_JITTER)
         d.ellipse([cx - r, cy - r, cx + r, cy + r],
                   fill=int(255 * luminance(col) * min(1.0, 0.35 + rng.exponential(0.5))))
     halo = points.filter(ImageFilter.GaussianBlur(pitch * 0.35))

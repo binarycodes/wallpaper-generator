@@ -2,12 +2,13 @@
 faint CRT scanlines. The art is rebuilt from glyphs with the rain dimmed behind
 it, and grey pixels already on the canvas (the header) are graded to green so
 nothing on the page is off-palette."""
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from ._common import grade_greys, luminance, unit
+from ._common import grade_greys, luminance, size_jitter, thin, unit
 
 FONT = Path(__file__).resolve().parent.parent / "fonts" / "DejaVuSansMono.ttf"
 TEXT_FONT = FONT.with_name("VT323-Regular.ttf")   # boxy CRT face for subtitle and footer
@@ -33,6 +34,9 @@ SCANLINES = 0.12                # darkening of every other scanline; 0 disables
 SCANLINE_PX = 3                 # scanline period in output pixels
 
 ART_GLYPH = 1.35                # art glyph size as a multiple of the dot pitch
+DOT_DROP = 0.00                 # share of art glyphs left out
+DOT_SIZE_JITTER = 0.40          # 0 uniform glyphs, 0.5 gentle size mix, 1 large variance
+DOT_STRIDE = 2                  # keep every Nth dot in both directions: 1 all dots, 2 gaps double
 ART_HEADS = 0.04                # share of art glyphs drawn in the bright head colour
 ART_BRIGHT = (0.55, 1.0)        # brightness range of the other art glyphs before the type colour
 ART_GLOW_BLUR = 0.9             # art glow radius as a multiple of the dot pitch
@@ -41,6 +45,11 @@ ART_DIM = 0.65                  # how much the rain fades behind the art
 ART_DIM_MARGIN = 2              # dimmed margin around the art, in dot pitches
 ART_DIM_BLUR = 3                # softness of that margin, in dot pitches
 GRADE_SAT = 40                  # pixels less saturated than this are graded to green
+
+
+@lru_cache(maxsize=None)
+def _font(size):
+    return ImageFont.truetype(str(FONT), max(1, int(size)))
 
 
 def base(size, s, seed):
@@ -95,12 +104,12 @@ def draw_art(img, dots, pitch, s, seed):
     shade = shade.filter(ImageFilter.GaussianBlur(pitch * ART_DIM_BLUR))
     a *= 1 - ART_DIM * unit(shade)[..., None]
 
-    font = ImageFont.truetype(str(FONT), int(pitch * ART_GLYPH))
     body = Image.new("L", img.size, 0)
     head = Image.new("L", img.size, 0)
     db, dh = ImageDraw.Draw(body), ImageDraw.Draw(head)
-    for cx, cy, col in dots:
+    for cx, cy, col in thin(dots, pitch, rng, DOT_DROP, DOT_STRIDE):
         ch = GLYPHS[rng.integers(len(GLYPHS))]
+        font = _font(pitch * ART_GLYPH * size_jitter(rng, DOT_SIZE_JITTER))
         if rng.random() < ART_HEADS:
             dh.text((cx, cy), ch, font=font, fill=255, anchor="mm")
         else:

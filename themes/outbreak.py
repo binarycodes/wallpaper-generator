@@ -9,7 +9,7 @@ fade is ignored; blood is blood."""
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from ._common import grade_greys, unit
+from ._common import grade_greys, size_jitter, thin, unit
 
 TEXT = {"subtitle": (200, 184, 168), "prompt": (176, 32, 36), "footer": (120, 26, 30)}
 BG = (14, 10, 10)
@@ -63,6 +63,9 @@ SPLAT_STREAK_LEN = (60, 220)
 
 DOT_R = 0.54                                      # droplet radius as a multiple of the dot pitch; over 0.5 pools everything
 DOT_SQUASH = 1.08                                 # vertical stretch of each droplet
+DOT_DROP = 0.00                                   # share of droplets left out
+DOT_SIZE_JITTER = 0.40                            # 0 uniform droplets, 0.5 gentle size mix, 1 large variance
+DOT_STRIDE = 2                                    # keep every Nth dot in both directions: 1 all dots, 2 gaps double
 ART_DRIP_CHANCE = 0.10                            # share of underside dots that drip
 ART_DRIP_LEN = (4.0, 0.7)                         # median length in dot pitches and lognormal spread
 ART_DRIP_WIDTH = (0.25, 0.45)                     # width range in dot pitches
@@ -305,14 +308,15 @@ def draw_art(img, dots, pitch, s, seed):
 
     x_min = min(cx for cx, _, _ in dots)
     y_min = min(cy for _, cy, _ in dots)
+    dots = list(thin(dots, pitch, rng, DOT_DROP, DOT_STRIDE))     # drips, spray and holes follow the kept dots
     grid = {(round((cx - x_min) / pitch), round((cy - y_min) / pitch)) for cx, cy, _ in dots}
 
     blood, d = _layer(img.size)
     for x, y in anchors:
         w = rng.uniform(*HEADER_DRIP_WIDTH) * s
         _drip(d, x, y, HEADER_DRIP_LEN[0] * s * rng.lognormal(0, HEADER_DRIP_LEN[1]), w, rng)
-    r = pitch * DOT_R
     for cx, cy, _ in dots:
+        r = pitch * DOT_R * size_jitter(rng, DOT_SIZE_JITTER)
         d.ellipse([cx - r, cy - r * DOT_SQUASH, cx + r, cy + r * DOT_SQUASH], fill=255)
         gx, gy = round((cx - x_min) / pitch), round((cy - y_min) / pitch)
         if (gx, gy + 1) not in grid and rng.random() < ART_DRIP_CHANCE:
