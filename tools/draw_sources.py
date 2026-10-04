@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Draw the source bitmap for the hand-made deathstar type into a directory,
+"""Draw the source bitmaps for the hand-made types into a directory,
 ready for img2type.py.   tools/draw_sources.py OUT_DIR
+
+denied.png is already one pixel per dot, so convert it with --exact.
 """
 import os
 import sys
@@ -14,7 +16,7 @@ if _venv_py.is_file() and Path(sys.prefix).resolve() != _venv_py.parent.parent.r
 import math
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 
@@ -50,8 +52,88 @@ def deathstar(size=1024):
     return Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8))
 
 
+# 5x7 glyphs for the banner, '#' = dot
+GLYPHS = {
+    "A": [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    "C": [".###.", "#...#", "#....", "#....", "#....", "#...#", ".###."],
+    "D": ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+    "E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+    "I": [".###.", "..#..", "..#..", "..#..", "..#..", "..#..", ".###."],
+    "N": ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"],
+    "S": [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+    " ": ["....."] * 7,
+}
+
+
+def denied(w=208, h=128, ss=8):
+    """Padlock inside a scanner reticle, crossed by a hazard banner reading ACCESS DENIED.
+    Returned one pixel per dot: shapes are drawn at ss x and box-filtered, text is stamped exactly."""
+    big = Image.new("L", (w * ss, h * ss), 0)
+    d = ImageDraw.Draw(big)
+    cx, cy = w / 2 * ss, 60 * ss
+
+    def ring(r0, r1, a0=0, a1=360):
+        d.pieslice([cx - r1, cy - r1, cx + r1, cy + r1], a0, a1, fill=255)
+        d.ellipse([cx - r0, cy - r0, cx + r0, cy + r0], fill=0)
+
+    def spoke(ang, r0, r1, width):
+        t = math.radians(ang)
+        d.line([cx + r0 * math.cos(t), cy + r0 * math.sin(t), cx + r1 * math.cos(t), cy + r1 * math.sin(t)],
+               fill=255, width=int(width))
+
+    # reticle, drawn outside-in because each ring clears its own hole
+    ring(58.5 * ss, 60.5 * ss)                                                       # outer rim
+    ring(56 * ss, 56 * ss)                                                           # clear hole only
+    for i in range(36):                                                              # tick dial
+        major = i % 3 == 0
+        spoke(i * 10, (51 if major else 53) * ss, 56 * ss, (2.5 if major else 1.5) * ss)
+    d.ellipse([cx - 49 * ss, cy - 49 * ss, cx + 49 * ss, cy + 49 * ss], fill=0)
+    for i in range(10):                                                              # segmented scan ring
+        a0 = -90 + i * 36 + 4
+        if i in (6, 7):                                                              # a dead segment pair
+            continue
+        d.pieslice([cx - 47 * ss, cy - 47 * ss, cx + 47 * ss, cy + 47 * ss], a0, a0 + 28, fill=255)
+    d.ellipse([cx - 43 * ss, cy - 43 * ss, cx + 43 * ss, cy + 43 * ss], fill=0)
+    for ang in (0, 90, 180, 270):                                                    # cardinal notches
+        spoke(ang, 36 * ss, 42 * ss, 2 * ss)
+
+    # padlock: shackle arc + legs, body with an inset panel and a keyhole
+    sx, sy, ro, ri = cx, 42 * ss, 15 * ss, 10 * ss
+    d.pieslice([sx - ro, sy - ro, sx + ro, sy + ro], 180, 360, fill=255)
+    d.pieslice([sx - ri, sy - ri, sx + ri, sy + ri], 180, 360, fill=0)
+    d.rectangle([sx - ro, sy, sx - ri, 54 * ss], fill=255)
+    d.rectangle([sx + ri, sy, sx + ro, 54 * ss], fill=255)
+    bx0, by0, bx1, by1 = cx - 21 * ss, 50 * ss, cx + 21 * ss, 80 * ss
+    d.rounded_rectangle([bx0, by0, bx1, by1], radius=4 * ss, fill=255)
+    d.rounded_rectangle([bx0 + 3 * ss, by0 + 3 * ss, bx1 - 3 * ss, by1 - 3 * ss], radius=2 * ss, fill=0)
+    d.rounded_rectangle([bx0 + 5 * ss, by0 + 5 * ss, bx1 - 5 * ss, by1 - 5 * ss], radius=1 * ss, fill=255)
+    kx, ky = cx, 62 * ss
+    d.ellipse([kx - 4 * ss, ky - 4 * ss, kx + 4 * ss, ky + 4 * ss], fill=0)
+    d.polygon([(kx - 2 * ss, ky), (kx + 2 * ss, ky), (kx + 3 * ss, ky + 10 * ss), (kx - 3 * ss, ky + 10 * ss)], fill=0)
+
+    img = np.asarray(big.resize((w, h), Image.BOX)) > 127
+
+    # banner at exact dot resolution: rails above and below, hazard stripes at the ends, 2x lettering
+    by, bh, text, k = 86, 24, "ACCESS DENIED", 2
+    img[by - 2:by + bh + 2, :] = False
+    img[by, :] = img[by + bh - 1, :] = True
+    tw = (len(text) * 6 - 1) * k
+    tx, ty = (w - tw) // 2, by + (bh - 7 * k) // 2
+    yy, xx = np.mgrid[by + 3:by + bh - 3, 0:w]
+    ends = (xx < tx - 4) | (xx >= tx + tw + 4)
+    img[by + 3:by + bh - 3, :] = ends & (((xx + yy) // 4) % 2 == 0)
+    for i, ch in enumerate(text):
+        for r, row in enumerate(GLYPHS[ch]):
+            for c, px in enumerate(row):
+                if px == "#":
+                    x, y = tx + (i * 6 + c) * k, ty + r * k
+                    img[y:y + k, x:x + k] = True
+    return Image.fromarray(img.astype(np.uint8) * 255)
+
+
 if __name__ == "__main__":
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "sources")
     out.mkdir(parents=True, exist_ok=True)
-    deathstar().save(out / "deathstar.png")
-    print("wrote", out / "deathstar.png")
+    for name, draw in (("deathstar", deathstar), ("denied", denied)):
+        draw().save(out / f"{name}.png")
+        print("wrote", out / f"{name}.png")

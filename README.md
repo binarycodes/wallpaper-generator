@@ -61,7 +61,8 @@ double-line strokes), `gradient`, `solid`, `hollow`, `dotted`, `hgradient`,
 ## Types
 
 The centre art comes from `types/<name>.txt`, selected with `--type`. Included:
-`arch` (default), `skull`, `debian`, `macos`, `kali`, `deathstar`, `vaadin`. Art of any
+`arch` (default), `skull`, `debian`, `macos`, `kali`, `deathstar`, `vaadin`,
+`denied` (a padlock in a scanner dial over an ACCESS DENIED banner, for lock screens). Art of any
 size is scaled to fit between header and footer.
 
 Arch, Debian, Apple, Kali and Vaadin marks are trademarks of their owners; the type files are
