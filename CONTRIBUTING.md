@@ -74,8 +74,10 @@ tools/img2type.py photo.png types/photo.txt --cols 56 --dither   # shaded image
 
 `--color`/`--color2` set a top-to-bottom fade, `--exact` uses one image pixel per
 dot. The existing logos use 48 columns and a `#DDDDDD` to `#888888` fade.
-`tools/draw_sources.py DIR` redraws the hand-made `deathstar` source bitmap;
-put any new procedurally drawn source there so it stays reproducible. Add new
+`tools/draw_sources.py DIR` redraws the hand-made `deathstar` and `denied` source
+bitmaps; put any new procedurally drawn source there so it stays reproducible.
+`denied.png` is drawn one pixel per dot so its lettering stays crisp; convert it
+with `--exact`. Add new
 types to the list in the README, and to its trademark note when the mark is
 someone's.
 

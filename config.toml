@@ -4,11 +4,11 @@
 header   = ""          # block-letter title; "" to omit (art shifts up)
 header_font_style   = "ansi_shadow"   # FIGlet font; ./generate.py --list-header-fonts
 header_render_style = "outline"       # outline gradient solid hollow dotted hgradient scanlines shadow dither
-subtitle = "Fight for simplicity"      # small text under the art; "" to omit
-footer   = "Remember to mvn vaadin:dance"   # bottom-right; "" to omit
+subtitle = "Live - Love - Linux"      # small text under the art; "" to omit
+footer   = "Did you pacman -Syu today ?"   # bottom-right; "" to omit
 prompt   = "me@localhost ❯ ▉"                    # bottom-left; "" to omit
-type     = "vaadin"                  # any types/<name>.txt
-theme    = "plain"                 # plain constellation matrix blueprint outbreak
+type     = "arch"                  # any types/<name>.txt
+theme    = "constellation"                 # plain constellation matrix blueprint outbreak
 seed     = "7"                     # any integer; changes where a theme puts its random detail
 out      = "wallpaper.png"
 size     = "3840x2160"
